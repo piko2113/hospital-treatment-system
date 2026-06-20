@@ -1,0 +1,6 @@
+train: C:\Users\DELL\datasets\luna16_yolo\images\train
+val: C:\Users\DELL\datasets\luna16_yolo\images\val
+test: C:\Users\DELL\datasets\luna16_yolo\images\test
+
+nc: 1
+names: ['nodule']

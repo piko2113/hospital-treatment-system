@@ -1,0 +1,469 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="description" content="医院就诊影像分析系统">
+  <meta name="keywords" content="医院,影像分析,AI,肺炎识别">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>医院就诊影像分析系统</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-siteapp"/>
+  <link rel="icon" type="image/png" href="{% static 'assets/i/favicon.png' %}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="icon" sizes="192x192" href="{% static 'assets/i/app-icon72x72@2x.png' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/amazeui.min.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/app.css' %}">
+  <style>
+    /* ========== 全局 ========== */
+    * { box-sizing: border-box; }
+
+    body {
+      background: #fff;
+      background-attachment: fixed;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: #2c3e50;
+      min-height: 100vh;
+    }
+
+    a { transition: color 0.2s; }
+
+    /* ========== 顶部横幅 ========== */
+    .blog-header {
+      background: linear-gradient(135deg, #0d3b3a 0%, #059B7A 45%, #10D07A 100%);
+      padding: 28px 0 20px;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+    .blog-header::before {
+      content: '';
+      position: absolute;
+      top: -60%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .blog-header::after {
+      content: '';
+      position: absolute;
+      bottom: -50%;
+      left: -5%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .blog-header .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 15px;
+      position: relative;
+      z-index: 1;
+    }
+    .blog-header .header-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .blog-header .header-logo img {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1);
+      object-fit: contain;
+    }
+    .blog-header .header-title {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .blog-header .header-sub {
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    /* ========== 导航栏（毛玻璃） ========== */
+    .blog-nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(5,155,122,0.15);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+      max-width: 1200px;
+      margin: 0 auto;
+      border-radius: 0 0 10px 10px;
+    }
+    .blog-nav .am-nav {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .blog-nav .am-nav > li > a {
+      color: #444;
+      font-size: 14px;
+      padding: 14px 18px;
+      transition: all 0.25s;
+      border-bottom: 2px solid transparent;
+      position: relative;
+    }
+    .blog-nav .am-nav > li > a:hover {
+      color: #059B7A;
+      background: transparent;
+      border-bottom-color: #10D07A;
+    }
+    .blog-nav .am-nav > li > a::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #059B7A, #10D07A);
+      transition: all 0.3s;
+      transform: translateX(-50%);
+    }
+    .blog-nav .am-nav > li > a:hover::after {
+      width: 60%;
+    }
+    .blog-nav .am-active > a {
+      color: #fff !important;
+      font-weight: 600;
+      background: linear-gradient(180deg, #059B7A, #10D07A) !important;
+      border-radius: 6px 6px 0 0;
+      border-bottom: none;
+    }
+    .blog-nav .am-active > a::after { display: none; }
+    .blog-nav .user-welcome {
+      color: #059B7A;
+      font-weight: 500;
+      padding: 12px 0 12px 10px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    /* ========== 内容区 ========== */
+    .blog-fixed { max-width: 1200px; margin: 0 auto; }
+    .blog-content { padding-top: 28px; min-height: 500px; }
+
+    /* ========== 文章卡片 ========== */
+    .blog-entry-article {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+      padding: 20px;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      border: 1px solid #eee;
+      display: flex;
+      gap: 20px;
+      overflow: hidden;
+    }
+    .blog-entry-article:hover {
+      box-shadow: 0 6px 28px rgba(5,155,122,0.10);
+      border-color: #d0e8e0;
+      transform: translateY(-3px);
+    }
+    .blog-entry-img {
+      flex: 0 0 260px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+    .blog-entry-img img {
+      width: 100%;
+      height: 170px;
+      object-fit: cover;
+      border-radius: 8px;
+      transition: transform 0.4s;
+    }
+    .blog-entry-article:hover .blog-entry-img img {
+      transform: scale(1.05);
+    }
+    .blog-entry-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .blog-entry-text .meta {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .blog-entry-text .meta i { margin-right: 3px; }
+    .blog-entry-text h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+    .blog-entry-text h3 a {
+      color: #2c3e50;
+      text-decoration: none;
+    }
+    .blog-entry-text h3 a:hover {
+      color: #059B7A;
+    }
+    .blog-entry-text p {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.7;
+      flex: 1;
+      margin: 0 0 12px;
+    }
+    .blog-continue {
+      color: #059B7A;
+      font-weight: 600;
+      font-size: 13px;
+      text-decoration: none;
+      align-self: flex-start;
+    }
+    .blog-continue:hover { color: #0d6b55; }
+
+    /* ========== 侧边栏 ========== */
+    .blog-sidebar-widget {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      margin-bottom: 22px;
+      padding: 22px;
+      border: 1px solid #eee;
+    }
+    .blog-sidebar-widget:nth-child(1) { border-top: 3px solid #059B7A; }
+    .blog-sidebar-widget:nth-child(2) { border-top: 3px solid #e74c3c; }
+    .blog-sidebar-widget:nth-child(3) { border-top: 3px solid #48c9b0; }
+    .blog-sidebar-widget:nth-child(4) { border-top: 3px solid #f39c12; }
+    .blog-title {
+      border-left: 4px solid #059B7A;
+      padding-left: 12px;
+      margin-bottom: 15px;
+      font-size: 15px;
+    }
+    .blog-title span { color: #2c3e50; font-weight: 700; }
+
+    /* ========== 分页 ========== */
+    .am-pagination { margin-top: 20px; }
+    .am-pagination > li > a {
+      border-radius: 6px;
+      margin: 0 3px;
+      color: #059B7A;
+      border: 1px solid #ddd;
+      padding: 8px 14px;
+      transition: all 0.2s;
+    }
+    .am-pagination > li > a:hover {
+      background: #e8faf5;
+      border-color: #059B7A;
+    }
+    .am-pagination > .am-active > a {
+      background: #059B7A;
+      border-color: #059B7A;
+      color: #fff !important;
+    }
+
+    /* ========== 页脚 ========== */
+    .blog-footer {
+      background: linear-gradient(180deg, #1a3a38, #0d2a28);
+      color: #b0c4c0;
+      padding: 40px 0 20px;
+      margin-top: 50px;
+    }
+    .blog-footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 15px;
+    }
+    .blog-footer h3 {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      border-left: 3px solid #10D07A;
+      padding-left: 10px;
+      margin-bottom: 14px;
+    }
+    .blog-footer p {
+      font-size: 13px;
+      line-height: 1.8;
+      margin-bottom: 8px;
+    }
+    .blog-footer a {
+      color: #7abeb0;
+      transition: color 0.2s;
+    }
+    .blog-footer a:hover {
+      color: #10D07A;
+      text-decoration: none;
+    }
+    .blog-footer .blog-icon {
+      font-size: 18px;
+      margin-right: 6px;
+    }
+    .blog-footer .footer-divider {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin: 20px 0 12px;
+    }
+    .blog-footer .footer-bottom {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ========== 响应式 ========== */
+    @media (max-width: 768px) {
+      .blog-entry-article {
+        flex-direction: column;
+      }
+      .blog-entry-img {
+        flex: none;
+      }
+      .blog-entry-img img {
+        height: 160px;
+      }
+      .blog-header .header-title {
+        font-size: 18px;
+      }
+      .blog-nav .am-nav > li > a {
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+
+<body id="blog-article-sidebar">
+<!-- header start -->
+<header class="blog-header">
+    <div class="header-inner">
+        <a class="header-logo" href="/">
+            <img src="{% static 'images/logo.png' %}" alt="Logo"/>
+            <div>
+                <h1 class="header-title">医院就诊影像分析系统</h1>
+                <div class="header-sub"><i class="am-icon-hospital-o"></i> AI Agent 诊疗 · 智能医疗服务平台</div>
+            </div>
+        </a>
+    </div>
+</header>
+<!-- header end -->
+
+<!-- nav start -->
+<nav class="blog-nav">
+  <div class="am-collapse am-topbar-collapse am-in" id="blog-collapse">
+    <ul class="am-nav am-nav-pills am-topbar-nav">
+      <li><a href="/"><i class="am-icon-home"></i> 首页</a></li>
+      <li class="am-dropdown" data-am-dropdown>
+        <a class="am-dropdown-toggle" data-am-dropdown-toggle href="javascript:;">
+          <i class="am-icon-folder"></i> 话题 <span class="am-icon-caret-down"></span>
+        </a>
+        <ul class="am-dropdown-content">
+         {% for t in topics %}
+          <li><a href="/topic/{{ t.id }}">{{ t.tname }}</a></li>
+         {% endfor %}
+        </ul>
+      </li>
+      {% if user.is_authenticated %}
+      <li><a href="/recognition"><i class="am-icon-medkit"></i> 图像识别</a></li>
+      <li><a href="/chat"><i class="am-icon-commenting"></i> AI助理</a></li>
+      <li><a href="/logout"><i class="am-icon-sign-out"></i> 注销</a></li>
+      {% else %}
+      <li><a href="/login"><i class="am-icon-sign-in"></i> 登录</a></li>
+      <li><a href="/register"><i class="am-icon-user-plus"></i> 注册</a></li>
+      {% endif %}
+    </ul>
+    <form class="am-topbar-form am-topbar-right am-form-inline">
+      <div class="am-form-group">
+        {% if user.is_authenticated %}
+        <span class="user-welcome"><i class="am-icon-user-circle"></i> {{ user.username }}</span>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</nav>
+<!-- nav end -->
+
+<!-- content start -->
+<div class="am-g am-g-fixed blog-fixed blog-content">
+{% block content_block %}{% endblock %}
+</div>
+<!-- content end -->
+
+<footer class="blog-footer">
+  <div class="blog-footer-inner">
+    <div class="am-g">
+      <div class="am-u-sm-12 am-u-md-4">
+          <h3><i class="am-icon-info-circle"></i> 技术简介</h3>
+          <p>本系统基于深度卷积神经网络（MobileNetV2 / ResNet50），配合 YOLOv8 肺结节检测，对肺部CT影像进行智能分析，辅助识别疑似肺炎病例。</p>
+      </div>
+      <div class="am-u-sm-12 am-u-md-4">
+          <h3><i class="am-icon-cogs"></i> 技术栈</h3>
+          <p>
+            <i class="am-icon-python"></i> Django · 
+            <i class="am-icon-google"></i> TensorFlow · 
+            <i class="am-icon-database"></i> MySQL<br>
+            <i class="am-icon-eye"></i> OpenCV · 
+            <i class="am-icon-cube"></i> YOLOv8 · 
+            <i class="am-icon-magic"></i> DeepSeek API
+          </p>
+      </div>
+      <div class="am-u-sm-12 am-u-md-4">
+          <h3><i class="am-icon-link"></i> 相关链接</h3>
+          <p><a href="https://github.com" target="_blank"><span class="am-icon-github am-icon-fw blog-icon"></span> GitHub</a></p>
+          <p><a href="https://weibo.com" target="_blank" rel="noopener"><span class="am-icon-weibo am-icon-fw blog-icon"></span> 官方微博</a></p>
+          <p><a href="https://www.wechat.com" target="_blank" rel="noopener"><span class="am-icon-weixin am-icon-fw blog-icon"></span> 微信公众号</a></p>
+      </div>
+    </div>
+    <div class="footer-divider"></div>
+    <div class="footer-bottom">
+      © 医院就诊影像分析系统
+    </div>
+  </div>
+</footer>
+
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/amazeui.min.js' %}"></script>
+<script>
+// 相对时间转换
+function updateRelativeTimes() {
+    document.querySelectorAll('.relative-time').forEach(function(el) {
+        var timeStr = el.getAttribute('data-time');
+        if (!timeStr) return;
+        var date = new Date(timeStr);
+        if (isNaN(date.getTime())) return;
+        var now = new Date();
+        var diffMs = now - date;
+        var diffSec = Math.floor(diffMs / 1000);
+        var text = '';
+        if (diffSec < 60) {
+            text = '刚刚';
+        } else if (diffSec < 3600) {
+            text = Math.floor(diffSec / 60) + '分钟前';
+        } else if (diffSec < 86400) {
+            text = Math.floor(diffSec / 3600) + '小时前';
+        } else if (diffSec < 2592000) {
+            text = Math.floor(diffSec / 86400) + '天前';
+        } else {
+            var y = date.getFullYear();
+            var m = (date.getMonth() + 1).toString().padStart(2, '0');
+            var d = date.getDate().toString().padStart(2, '0');
+            text = y + '-' + m + '-' + d;
+        }
+        el.textContent = text;
+    });
+}
+document.addEventListener('DOMContentLoaded', updateRelativeTimes);
+</script>
+</body>
+</html>

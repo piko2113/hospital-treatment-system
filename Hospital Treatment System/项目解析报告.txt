@@ -1,0 +1,617 @@
+================================================================================
+                   医院就诊影像分析系统 — 项目解析报告
+================================================================================
+                          生成日期: 2026年6月11日
+
+================================================================================
+一、项目概述
+================================================================================
+本项目是一个基于 Django 框架的 Web 应用，名为"医院就诊影像分析系统"。
+核心功能包括：
+  1. 社区论坛（文章发布、话题管理、评论系统）
+  2. 用户注册/登录/注销
+  3. AI 肺部 CT 影像识别（二分类：疑似肺炎 / 状态正常）
+  4. 后台数据管理（基于 SimpleUI 主题）
+
+================================================================================
+二、目录结构
+================================================================================
+
+Hospital Treatment System/
+├── manage.py                  # Django 管理入口
+├── db.sql                     # MySQL 数据库导出文件
+├── secondweb/                 # Django 项目配置目录
+│   ├── __init__.py
+│   ├── settings.py            # 项目配置（数据库、中间件、静态文件等）
+│   ├── urls.py                # 根 URL 路由
+│   └── wsgi.py                # WSGI 部署入口
+├── home/                      # 主应用 (Django App)
+│   ├── __init__.py
+│   ├── admin.py               # 后台管理模型注册
+│   ├── apps.py                # App 配置
+│   ├── models.py              # 数据模型 (5个模型)
+│   ├── views.py               # 视图逻辑 (11个视图函数)
+│   ├── tests.py               # 测试文件 (空)
+│   └── migrations/            # 数据库迁移文件
+│       ├── 0001_initial.py    # 初始迁移 (原 Django 3.2 生成)
+│       └── 0002_auto_20260611_1629.py  # 运行时自动生成
+├── templates/                 # Django 模板 (Amaze UI 前端框架)
+│   ├── base.html              # 基础模板 (导航栏、布局)
+│   ├── index.html             # 首页 (文章列表、分页)
+│   ├── detail.html            # 文章详情页
+│   ├── login.html             # 登录页
+│   ├── register.html          # 注册页
+│   ├── post.html              # 文章发布页 (集成 TinyMCE 富文本)
+│   ├── topics.html            # 话题文章列表
+│   └── recognition.html       # AI 影像识别页 (上传CT图片)
+├── static/                    # 静态资源
+│   ├── assets/
+│   │   ├── css/               # Amaze UI 样式、自定义样式
+│   │   ├── js/                # jQuery、Amaze UI、自定义脚本
+│   │   ├── fonts/             # FontAwesome 图标字体
+│   │   └── i/                 # 图片资源
+│   ├── django_tinymce/        # TinyMCE 富文本编辑器
+│   ├── tiny_mce/              # TinyMCE 核心 & 多语言包
+│   └── images/                # 站点用图片
+├── train_photos/              # 训练集图片 (2000张)
+│   ├── COVID/                 # 阳性：1000张
+│   └── non-COVID/             # 阴性：1000张
+├── test_photos/               # 测试集图片 (482张)
+│   ├── COVID/                 # 阳性：252张
+│   └── nonCOVID/              # 阴性：230张
+├── userimg/upload/            # 用户上传文件目录
+│   └── recognition/           # 识别记录图片存档
+├── train.py                   # MobileNetV2 模型训练脚本
+├── train_restnet.py           # ResNet50 模型训练脚本
+├── test.py                    # MobileNetV2 模型测试 & 用户预测
+├── test_restnet.py            # ResNet50 模型测试 & 评估
+├── save.py                    # 图像 ROI 截取工具
+├── lung.ckpt.*                # MobileNetV2 训练权重文件
+├── lung_restnet.ckpt.*        # ResNet50 训练权重文件
+├── model.png                  # 模型结构图
+└── checkpoint                 # TensorFlow checkpoint 记录
+
+================================================================================
+三、技术栈与框架
+================================================================================
+
+【后端框架】
+  - Django 3.2.0 (原项目基于 Django 2.0.2 开发，运行环境为 3.2)
+  - Python 3.9.5
+
+【数据库】
+  - MySQL 8.0 (数据库名: lung_recognition)
+  - 连接驱动: mysqlclient (MySQLdb)
+  - 默认配置: root / 123456 / 127.0.0.1:3306
+
+【前端框架】
+  - Amaze UI (国产响应式前端框架，类似 Bootstrap)
+  - jQuery 1.9.1
+  - TinyMCE 富文本编辑器
+  - FontAwesome 图标库
+  - Handlebars.js 模板引擎 (引用但未使用)
+
+【AI 框架】
+  - TensorFlow 2.x (GPU推荐但未验证)
+  - Keras (作为 TensorFlow 内置 API)
+  - OpenCV (cv2) — ROI 截取
+  - PIL/Pillow — 图像处理
+  - scikit-learn — 模型评估指标
+  - Matplotlib — 训练曲线可视化
+
+【Admin 主题】
+  - SimpleUI (Django Admin 现代化主题)
+  - 默认主题: element.css
+
+================================================================================
+四、数据模型设计 (Models)
+================================================================================
+
+4.1 用户表 (User_info)
+  ┌─────────────┬──────────────┬──────────────────────────────┐
+  │ 字段         │ 类型          │ 说明                         │
+  ├─────────────┼──────────────┼──────────────────────────────┤
+  │ id          │ BigAutoField  │ 主键                         │
+  │ username    │ CharField(64) │ 用户名                       │
+  │ nickname    │ CharField(64) │ 昵称 (可空)                  │
+  │ email       │ EmailField    │ 邮箱地址                     │
+  │ password    │ CharField(128)│ MD5 加密密码 (⚠️ 不安全)     │
+  │ phone       │ CharField(24) │ 电话                         │
+  │ is_admin    │ BooleanField  │ 是否管理员                   │
+  │ status      │ IntegerField  │ 状态 (0=正常, 1=已注销)      │
+  └─────────────┴──────────────┴──────────────────────────────┘
+  当前数据量: 7 条
+
+4.2 话题表 (Topic)
+  ┌─────────────┬──────────────┬──────────────────────────────┐
+  │ 字段         │ 类型          │ 说明                         │
+  ├─────────────┼──────────────┼──────────────────────────────┤
+  │ id          │ BigAutoField  │ 主键                         │
+  │ tname       │ CharField(16) │ 话题名称                     │
+  │ parent_id   │ IntegerField  │ 父话题ID (-1=顶级话题)       │
+  └─────────────┴──────────────┴──────────────────────────────┘
+
+4.3 文章表 (Article)
+  ┌──────────────┬─────────────────┬───────────────────────────┐
+  │ 字段          │ 类型             │ 说明                      │
+  ├──────────────┼─────────────────┼───────────────────────────┤
+  │ id           │ BigAutoField     │ 主键                      │
+  │ title        │ CharField(128)   │ 标题                      │
+  │ brief        │ CharField(512)   │ 简介                      │
+  │ content      │ TextField        │ 文章详情 (TinyMCE 编辑)   │
+  │ author       │ CharField(55)    │ 作者                      │
+  │ topic        │ FK → Topic       │ 所属话题 (级联删除)       │
+  │ publish_date │ DateTimeField    │ 发布时间 (自动生成)       │
+  │ update_date  │ DateTimeField    │ 更新时间 (自动更新)       │
+  │ image        │ ImageField       │ 配图 (上传到 upload/)     │
+  └──────────────┴─────────────────┴───────────────────────────┘
+  Meta: ordering = ['publish_date']
+  当前数据量: 4 条
+
+4.4 评论表 (Comment)
+  ┌──────────────┬──────────────────┬──────────────────────────┐
+  │ 字段          │ 类型              │ 说明                     │
+  ├──────────────┼──────────────────┼──────────────────────────┤
+  │ id           │ BigAutoField      │ 主键                     │
+  │ article      │ FK → Article      │ 所属文章 (级联删除)      │
+  │ commentator  │ FK → User_info    │ 评论者 (级联删除)        │
+  │ content      │ TextField         │ 评论内容                 │
+  │ comment_date │ DateTimeField     │ 评论时间 (自动生成)      │
+  │ parent_id    │ IntegerField      │ 父评论ID (-1=顶级评论)   │
+  └──────────────┴──────────────────┴──────────────────────────┘
+
+4.5 识别记录表 (Recognition)
+  ┌──────────────────┬──────────────────┬───────────────────────┐
+  │ 字段              │ 类型              │ 说明                  │
+  ├──────────────────┼──────────────────┼───────────────────────┤
+  │ id               │ BigAutoField      │ 主键                  │
+  │ user_id          │ CharField(512)    │ 用户标识 (存用户名)   │
+  │ result           │ CharField(512)    │ 识别结果              │
+  │ recognition_date │ DateTimeField     │ 检测时间              │
+  │ image            │ ImageField        │ 上传图片路径          │
+  └──────────────────┴──────────────────┴───────────────────────┘
+  当前数据量: 67 条
+
+================================================================================
+五、URL 路由设计
+================================================================================
+
+  URL 路径              视图函数        说明
+  ──────────────────  ────────────  ────────────────────
+  /                   home          首页 (文章列表, 分页6条/页)
+  /register           register      用户注册 (MD5密码加密)
+  /login              login         用户登录 (Session 认证)
+  /logout             logout        用户注销
+  /post               post          发布文章 (需登录, TinyMCE)
+  /recognition        recognition   影像识别页面
+  /upload             upload        上传CT图片 & AI识别 (JSON)
+  /article/<id>/      article       文章详情 (支持伪静态)
+  /topic/<id>/        topic         按话题筛选文章
+  /comment/<id>/      comment       发表评论
+  /pseudo/<id>/       pseudo        批量伪静态化生成
+  /admin/             Django Admin  后台管理 (SimpleUI 主题)
+
+================================================================================
+六、AI 模型详解
+================================================================================
+
+6.1 任务
+  肺部 CT 影像二分类:
+    - 类别 1: 疑似肺炎 (COVID / 阳性)
+    - 类别 2: 状态正常 (non-COVID / 阴性)
+
+6.2 数据集
+  ┌──────────┬──────────┬──────────┐
+  │ 数据集    │ 类别      │ 图片数量  │
+  ├──────────┼──────────┼──────────┤
+  │ 训练集    │ COVID    │ 1000     │
+  │          │ non-COVID│ 1000     │
+  │          │ 合计     │ 2000     │
+  ├──────────┼──────────┼──────────┤
+  │ 测试集    │ COVID    │ 252      │
+  │          │ nonCOVID │ 230      │
+  │          │ 合计     │ 482      │
+  └──────────┴──────────┴──────────┘
+
+6.3 模型一: MobileNetV2 (train.py + test.py)
+  - 基础网络: MobileNetV2 (ImageNet 预训练权重)
+  - 输入尺寸: 192×192×3
+  - include_top: False (不使用原分类头)
+  - 冻结: 基础网络参数全部冻结 (trainable=False)
+  - 结构:
+      MobileNetV2 (backbone)
+      → GlobalAveragePooling2D (全局平均池化)
+      → Dense(2, activation='softmax') (二分类输出)
+  - 训练超参数:
+      优化器: Adam
+      损失函数: Sparse Categorical Crossentropy
+      批次大小: 32
+      训练轮数: 5 epochs
+      训练集/验证集比例: 80% / 20%
+      数据增强: 无 (仅 shuffle + repeat)
+  - 模型保存: lung.ckpt (best only, save_weights_only)
+  - 实际部署模型: ✅ (test.py 的 user_predict 用于 Web 识别)
+
+6.4 模型二: ResNet50 (train_restnet.py + test_restnet.py)
+  - 基础网络: ResNet50 (ImageNet 预训练权重)
+  - 输入尺寸: 192×192×3
+  - include_top: False
+  - 冻结: 基础网络参数全部冻结 (trainable=False)
+  - 结构:
+      ResNet50 (backbone)
+      → GlobalAveragePooling2D (全局平均池化)
+      → Dense(2, activation='softmax') (二分类输出)
+  - 训练超参数:
+      优化器: Adam
+      损失函数: Sparse Categorical Crossentropy
+      批次大小: 32
+      训练轮数: 10 epochs
+      训练集/验证集比例: 80% / 20%
+      数据增强: 无
+  - 模型保存: lung_restnet.ckpt (best only, save_weights_only)
+  - 评估指标: 精确率 (Precision)、召回率 (Recall)、F1 Score
+
+6.5 图片预处理流程
+  原始图片 (JPEG/PNG)
+  → tf.io.read_file()           (读取文件)
+  → tf.image.decode_jpeg/png()  (解码为张量, 3通道)
+  → tf.image.resize([192,192])  (缩放到固定尺寸)
+  → image / 255.0               (归一化到 [0,1])
+  → image[tf.newaxis, ...]      (增加批次维度)
+
+6.6 预测流程 (Web 端)
+  用户上传CT图片
+  → 保存为 upload/recognition/img.png (最新图片，覆盖)
+  → 同时保存时间戳命名副本 (用于记录)
+  → 调用 test.py 的 user_predict(img_path)
+  → 加载 lung.ckpt 权重
+  → 返回 (中文标签, 置信度)
+  → 创建 Recognition 数据库记录
+  → JsonResponse 返回给前端
+
+================================================================================
+七、视图逻辑详解
+================================================================================
+
+7.1 home(request)
+  - 查询所有话题和文章
+  - 热门文章: 评论数 > 3 的文章，取前6篇
+  - 分页: 每页6条，Django Paginator
+  - 处理 PageNotAnInteger / EmptyPage 异常
+  - ⚠️ 遗留调试代码: print("222")
+
+7.2 register(request)
+  - 已登录用户重定向到首页
+  - POST: 获取用户名、密码、邮箱、昵称、电话
+  - 密码 MD5 哈希后存储
+  - 创建 User_info 记录
+  - ⚠️ 无表单验证、无 CSRF 令牌验证
+
+7.3 login(request)
+  - 已登录用户重定向到首页
+  - POST: 获取用户名、密码
+  - MD5 哈希后查询数据库
+  - 登录成功: session["s_name_001"] = username
+  - ⚠️ 明文传输密码（未用HTTPS）
+
+7.4 logout(request)
+  - 清除 session["s_name_001"]
+  - 重定向到首页
+
+7.5 article(request, id)
+  - 优先尝试读取静态化页面 (templates/staticpage/{id}.html)
+  - 若不存在，查询数据库
+  - 计算上一篇/下一篇文章ID
+  - ⚠️ 使用 list()[0] 可能抛出 IndexError
+  - ⚠️ 伪静态化需手动运行 /pseudo/<id>/
+
+7.6 post(request)
+  - 需登录 (检查 session["s_name_001"])
+  - POST: 创建 Article，处理图片上传
+  - PIL 处理图片保存
+  - ⚠️ 图片上传路径处理不够健壮
+
+7.7 topic(request, id)
+  - 按 topic_id 筛选文章
+  - 分页: 每页10条
+
+7.8 comment(request, id)
+  - POST 方式提交评论
+  - 根据用户名查找 commentator_id
+  - 创建 Comment 记录
+
+7.9 upload(request) — 核心AI识别接口
+  - @csrf_exempt (禁用 CSRF 保护)
+  - 接收上传图片
+  - handle_uploaded_file():
+      保存两个副本 (覆盖版 + 时间戳版)
+  - 延迟导入 from test import user_predict (避免启动时加载TF)
+  - 调用 AI 模型预测
+  - 创建 Recognition 记录
+  - 返回 JSON: {result, image_url}
+
+7.10 pseudo(request, id)
+  - 批量生成静态化HTML页面
+  - 从 http://127.0.0.1:8000/article/ 循环下载
+  - ⚠️ 硬编码URL、仅适用于本地开发
+
+7.11 recognition(request)
+  - 渲染识别页面
+
+================================================================================
+八、模板与前端架构
+================================================================================
+
+8.1 模板引擎
+  - Django Template Language (DTL)
+  - base.html 作为基础模板 (block 继承)
+  - {% extends 'base.html' %} + {% block content_block %}
+
+8.2 前端技术
+  - Amaze UI: 响应式网格布局 (am-g, am-u-md-8 等)
+  - 自定义渐变背景 (线性渐变: 绿色系)
+  - jQuery: DOM 操作、AJAX 请求
+  - TinyMCE: 文章富文本编辑 (theme: advanced, 600×400)
+  - 移动端适配: viewport meta 标签
+
+8.3 页面列表
+  ┌─────────────────┬────────────────────────────┐
+  │ 模板文件          │ 功能                        │
+  ├─────────────────┼────────────────────────────┤
+  │ base.html       │ 公共头部/导航/脚部           │
+  │ index.html      │ 首页 (文章列表+热门文章)     │
+  │ detail.html     │ 文章详情 + 评论区            │
+  │ login.html      │ 登录表单                    │
+  │ register.html   │ 注册表单                    │
+  │ post.html       │ 发布文章 (TinyMCE 富文本)    │
+  │ topics.html     │ 话题文章列表                 │
+  │ recognition.html│ CT影像上传 + AI识别结果展示  │
+  └─────────────────┴────────────────────────────┘
+
+================================================================================
+九、训练流程与调参分析
+================================================================================
+
+9.1 训练流程
+  STEP 1: 数据准备
+    - 从 train_photos/ 加载所有图片
+    - 按子目录名称自动标注 (COVID → 0, non-COVID → 1)
+    - 随机打乱数据
+    - 80% / 20% 分割训练集和验证集
+    - 创建 tf.data.Dataset 管道 (并行加载, AUTOTUNE)
+
+  STEP 2: 模型构建
+    - 加载预训练骨干网络 (MobileNetV2 / ResNet50)
+    - 冻结骨干网络权重
+    - 添加全局平均池化层
+    - 添加 2 类 softmax 分类头
+
+  STEP 3: 编译 & 训练
+    - 编译 (Adam + SparseCategoricalCrossentropy)
+    - 如果已存在 checkpoint，加载权重
+    - 设置 ModelCheckpoint 回调 (保存最优模型)
+    - model.fit() 训练
+
+  STEP 4: 可视化
+    - Matplotlib 绘制双子图
+    - 左: 训练/验证 准确率曲线
+    - 右: 训练/验证 损失率曲线
+    - plt.show() 弹出显示
+
+9.2 超参数对比
+  ┌──────────────────┬─────────────────┬─────────────────┐
+  │ 参数              │ MobileNetV2     │ ResNet50        │
+  ├──────────────────┼─────────────────┼─────────────────┤
+  │ 骨干网络           │ MobileNetV2     │ ResNet50        │
+  │ 输入尺寸           │ 192×192×3       │ 192×192×3       │
+  │ 骨干冻结           │ True            │ True            │
+  │ 池化方式           │ GlobalAverage   │ GlobalAverage   │
+  │ 分类头             │ Dense(2)        │ Dense(2)        │
+  │ 激活函数           │ softmax         │ softmax         │
+  │ 优化器             │ Adam (默认LR)    │ Adam (默认LR)    │
+  │ 损失函数           │ Sparse CCE      │ Sparse CCE      │
+  │ Batch Size        │ 32              │ 32              │
+  │ Epochs            │ 5               │ 10              │
+  │ 训练/验证比例      │ 80/20           │ 80/20           │
+  │ 数据增强           │ 无              │ 无               │
+  └──────────────────┴─────────────────┴─────────────────┘
+
+9.3 调参注意事项
+  - 两个模型均未使用数据增强（随机翻转、旋转、缩放等）
+  - 未使用学习率调度器 (LR Scheduler)
+  - 骨干网络完全冻结，未进行微调 (Fine-tuning)
+  - 未使用正则化 (Dropout / L2)
+  - 未使用类别权重 (可能数据不平衡)
+  - 训练集仅2000张，数据量偏小
+  - 未使用早停 (EarlyStopping)，固定轮数训练
+
+================================================================================
+十、遇到的问题与潜在缺陷
+================================================================================
+
+10.1 安全问题 🔴 严重
+  1. MD5 密码哈希
+     - 位置: views.py login/register 函数
+     - 问题: MD5 已被证明不安全，易被彩虹表破解
+     - 建议: 使用 Django 内置的 make_password/check_password
+            或 bcrypt/PBKDF2
+
+  2. 硬编码数据库密码
+     - 位置: settings.py 第96-98行
+     - 问题: 数据库密码明文写在代码中
+     - 建议: 全部改用环境变量读取
+
+  3. Session 固定
+     - 位置: views.py 多处
+     - 问题: session key "s_name_001" 硬编码，缺乏随机性
+     - 建议: 使用 Django 内置认证系统 (django.contrib.auth)
+
+  4. CSRF 保护被绕过
+     - 位置: views.py upload 函数
+     - 问题: @csrf_exempt 装饰器完全禁用了 CSRF 保护
+     - 建议: 对 AJAX 请求使用 CSRF token 而非禁用
+
+  5. SECRET_KEY 硬编码
+     - 位置: settings.py 第24行
+     - 问题: Django SECRET_KEY 使用默认值提交到代码中
+     - 建议: 生产环境必须使用环境变量，不可使用默认值
+
+10.2 代码质量问题 🟡 中等
+  6. 遗留调试代码
+     - 位置: views.py 第40行: print("222")
+     - 每次访问首页都会在控制台打印
+
+  7. Recognition.user_id 字段命名误导
+     - 位置: models.py 第74行
+     - 字段名为 user_id 但存储的是 username 字符串
+     - 原始迁移中 verbose_name 错误设置为"简介"
+
+  8. Password 字段长度问题
+     - 原始迁移设定 max_length=32 (刚好存MD5)
+     - 新迁移改为 128 才合理
+     - 说明原设计仅考虑MD5，未考虑未来扩展
+
+  9. 图片处理逻辑冗余
+     - upload 函数使用 PIL 保存，但识别使用的图片
+     - handle_uploaded_file 同时保存两份文件
+     - 存在 IO 浪费
+
+  10. 缺少表单验证
+      - register/login 没有验证输入合法性
+      - 没有检查用户名是否已存在
+      - 没有邮箱格式验证
+
+10.3 架构与兼容性问题 🟡 中等
+  11. Django 版本不匹配
+      - 项目最初基于 Django 2.0.2 开发
+      - 运行环境为 Django 3.2
+      - 配置文件保留 Django 2.0.2 注释
+
+  12. 伪静态化方案不够健壮
+      - pseudo 函数硬编码 URL 为 127.0.0.1:8000
+      - 应使用 reverse() 或配置化
+
+  13. SIMPLEUI_INDEX 端口不一致
+      - settings.py 指向 8001 端口
+      - 伪静态化代码使用 8000 端口
+      - 缺乏统一配置
+
+  14. 模板缺失
+      - base.html 引用 app.css 但目录中只有 app2.css
+      - 可能导致样式丢失
+
+  15. DEFAULT_AUTO_FIELD 配置
+      - settings.py 中设置了 BigAutoField
+      - 这是 Django 3.2+ 的特性，与原有 AutoField 产生迁移冲突
+
+10.4 模型与训练问题 🟡 中等
+  16. 未使用数据增强
+      - Medical imaging 通常需要数据增强提高泛化能力
+      - 2000张医学影像数据量偏小，增强尤为重要
+
+  17. 未验证GPU是否可用
+      - 代码中未检查 GPU 设备
+      - 训练可能仅在 CPU 上运行，效率低
+
+  18. 预训练权重适用性存疑
+      - MobileNetV2/ResNet50 基于 ImageNet (自然图像) 预训练
+      - 迁移到 CT 医学影像的域差距 (Domain Gap) 较大
+      - 未进行微调 (Fine-tuning) 可能影响精度
+
+  19. 类别目录名不一致
+      - train_photos: "non-COVID" (带连字符)
+      - test_photos: "nonCOVID" (无连字符)
+      - test.py 和 test_restnet.py 路径处理方式不同
+
+  20. 测试脚本路径硬编码
+      - test_restnet.py 测试路径为 ".\images\test"
+      - test.py 注释代码路径为 ".\test_photos"
+      - 路径不统一
+
+  21. 模型权重管理
+      - train.py 和 train_restnet.py 各自生成独立的 ckpt 文件
+      - Web 端 (test.py) 仅使用 lung.ckpt (MobileNetV2)
+      - ResNet50 的训练结果未被实际使用
+
+10.5 数据库问题 🟢 轻微
+  22. User_info 表未与 Django User 模型关联
+      - 自定义 User_info 完全独立于 Django auth
+      - 无法使用 Django 权限系统
+      - 导致 simpleui 权限认证菜单形同虚设
+
+  23. 表名不一致
+      - Django 默认表名应该是 home_userinfo
+      - 实际表名是 home_user_info (因为类名是 User_info)
+
+================================================================================
+十一、项目运行方式
+================================================================================
+
+11.1 环境要求
+  - Python 3.5+
+  - MySQL 8.0+
+  - 必要的 pip 包:
+      django==3.2
+      mysqlclient
+      tensorflow>=2.0
+      pillow
+      matplotlib
+      opencv-python
+      scikit-learn
+      django-simpleui
+      django-tinymce
+
+11.2 启动步骤
+  1. 确保 MySQL 服务运行，创建数据库:
+     CREATE DATABASE lung_recognition DEFAULT CHARSET utf8mb4;
+
+  2. 进入项目目录:
+     cd "Hospital Treatment System\Hospital Treatment System"
+
+  3. 运行数据库迁移:
+     python manage.py makemigrations
+     python manage.py migrate
+
+  4. 创建管理员账户:
+     python manage.py createsuperuser
+
+  5. 启动开发服务器:
+     python manage.py runserver 127.0.0.1:8001
+
+  6. 访问:
+     主页: http://127.0.0.1:8001/
+     后台: http://127.0.0.1:8001/admin/
+
+11.3 训练模型 (可选)
+  1. 准备数据: 将CT图片按类别放入 train_photos/COVID 和 train_photos/non-COVID
+  2. 运行训练:
+     python train.py           # MobileNetV2
+     python train_restnet.py   # ResNet50
+
+================================================================================
+十二、总结
+================================================================================
+
+本项目实现了一个功能完整的医院影像分析 Web 系统，包含论坛社区和 AI 肺部
+CT 影像识别两大核心模块。
+
+技术亮点:
+  - Django + Amaze UI 构建的全栈 Web 应用
+  - 基于迁移学习的医学影像二分类（MobileNetV2 / ResNet50）
+  - SimpleUI 美化的后台管理系统
+  - 完整的社区论坛功能（文章、话题、评论）
+
+主要不足:
+  1. 安全防护薄弱（MD5密码、CSRF豁免、硬编码密钥）
+  2. AI 训练策略过于简单（无数据增强、无微调、无正则化）
+  3. 代码规范性有待提高（调试代码残留、命名不一致、路径硬编码）
+  4. 数据库设计未与 Django 认证系统集成
+
+改进建议优先级:
+  高: 替换密码哈希方案、启用 CSRF 保护、移除硬编码密钥
+  中: 集成 Django 认证系统、添加数据增强、统一配置管理
+  低: 清理调试代码、统一命名规范、优化模板引用
+
+================================================================================
+                         报告结束
+================================================================================

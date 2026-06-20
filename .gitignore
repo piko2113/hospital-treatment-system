@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.egg
+
+# Virtualenv
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Django
+*.sqlite3
+db.sqlite3
+
+# Runtime
+*.log
+.env
+.local
+
+# 大模型文件（超过 100MB，GitHub 不让传）
+**/*.ckpt.data*
+**/*.ckpt.index
+**/*ckpt*
+
+# RAG 缓存（可重建）
+chroma_db/
+kb_index/
+**/chroma_db/
+**/kb_index/
+
+# 训练中间检查点（保留 best.pt + last.pt 即可）
+**/runs/**/epoch*.pt
+
+# Frontend（已删除）
+node_modules/
+frontend/
+
+# 用户上传的图片（不要提交到 git）
+userimg/
+**/userimg/
+
+# 训练/测试图片（几千张 CT 图，不要提交到 git）
+train_photos/
+**/train_photos/
+test_photos/
+**/test_photos/
+
+# TinyMCE 编辑器（第三方库，太大了）
+static/tiny_mce/
+
+# OS
+Thumbs.db
+.DS_Store

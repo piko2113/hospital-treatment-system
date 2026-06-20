@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content_block %}
+
+<style>
+  .recog-wrap {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .recog-left {
+    width: 40%;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .recog-right {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .recog-box {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #eee;
+    padding: 12px;
+  }
+  .model-opt {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .model-opt label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border: 2px solid #e0e6e3;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .model-opt label:hover {
+    border-color: #bfdbd3;
+    background: #f7fbfa;
+  }
+  .model-opt label.sel {
+    border-color: #059B7A;
+    background: #e8faf5;
+  }
+  .model-opt label input { display: none; }
+  .model-opt label .dot {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid #bbb;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .model-opt label.sel .dot {
+    border-color: #059B7A;
+    background: #059B7A;
+    box-shadow: inset 0 0 0 2px #e8faf5;
+  }
+  .drop-area {
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    background: #fafafa;
+    transition: 0.2s;
+  }
+  .drop-area:hover, .drop-area.dragover {
+    border-color: #059B7A;
+    background: #eef9f5;
+  }
+  .drop-area input[type="file"] { display: none; }
+  .drop-area .big-icon { font-size: 32px; color: #bbb; }
+  .drop-area:hover .big-icon { color: #059B7A; }
+  .img-card {
+    flex: 1;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    padding: 8px;
+  }
+  .img-card img {
+    max-width: 100%;
+    max-height: 200px;
+    width: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+  .result-text {
+    font-size: 16px;
+    font-weight: 700;
+    padding: 10px 14px;
+    border-radius: 8px;
+  }
+</style>
+
+<div class="blog-sidebar-widget" style="margin-bottom:12px; padding:12px 18px; border-top:3px solid #059B7A;">
+  <h3 style="margin:0; color:#059B7A; font-size: 17px;">
+    <i class="am-icon-medkit"></i> 肺部CT影像智能识别
+  </h3>
+  <p style="margin:4px 0 0; font-size:12px; color:#999;">
+    选择模型 → 上传CT影像 → AI 自动分析
+  </p>
+</div>
+
+<div class="blog-entry-article" style="padding:14px;">
+  <div class="recog-wrap">
+    <!-- ========== 左侧 ========== -->
+    <div class="recog-left">
+
+      <!-- 模型选择 -->
+      <div class="recog-box" style="padding: 10px;">
+        <div class="model-opt">
+          {% for m in models %}
+          <label id="mc-{{ m.key }}" onclick="selModel('{{ m.key }}')"
+                 {% if m.available and forloop.first %}class="sel"{% endif %}>
+            <span class="dot"></span>
+            {{ m.display }}
+            {% if not m.available %}<span style="color:#e74c3c;font-size:11px;">（未训练）</span>{% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 上传 -->
+      <div class="drop-area" id="dropZone">
+        <div class="big-icon"><i class="am-icon-cloud-upload"></i></div>
+        <div style="font-size:13px; color:#555; margin:4px 0;">点击或拖拽上传CT影像</div>
+        <div style="font-size:11px; color:#aaa;">PNG / JPG</div>
+        <form id="upform" action="/upload" method="POST" enctype="multipart/form-data" style="display:none">
+          {% csrf_token %}
+          <input type="file" id="fileInp" name="image" accept="image/*">
+        </form>
+      </div>
+      <div id="fileName" style="font-size:12px; color:#059B7A; display:none; margin:2px 0 0 4px;">
+        <i class="am-icon-file-image-o"></i> <span></span>
+      </div>
+      <div id="confirmBtn" style="display:none;">
+        <button onclick="doUpload()" class="am-btn am-btn-sm" style="width:100%; background:linear-gradient(135deg,#059B7A,#10D07A); color:#fff; border:none; border-radius:6px; padding:8px; font-size:14px;">
+          <i class="am-icon-search"></i> 开始识别
+        </button>
+      </div>
+
+      <!-- 阈值 + 引导 -->
+      <div style="display: flex; gap: 8px; flex:1;">
+        <div class="recog-box" style="flex:1; padding:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px;">
+            <span><i class="am-icon-crosshairs"></i> 结节阈值</span>
+            <span id="confLabel" style="color:#059B7A; font-weight:600;">0.25</span>
+          </div>
+          <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25"
+                 style="width:100%; height:18px; margin:2px 0;"
+                 oninput="confLabel.textContent=parseFloat(this.value).toFixed(2);confInput.value=this.value;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#999;">
+            <span>低</span><span>高</span>
+          </div>
+        </div>
+        <div class="recog-box" style="flex:1; padding:10px; display:none;" id="guideArea">
+          <div style="font-size:11px; color:#059B7A; font-weight:600; margin-bottom:5px;"><i class="am-icon-info-circle"></i> 使用流程</div>
+          <div style="font-size:11px; color:#666; line-height:1.7;">
+            1. 选择模型<br>2. 上传CT影像<br>3. 调整阈值<br>4. 开始识别<br>5. 查看结果
+          </div>
+        </div>
+      </div>
+
+      <!-- loading -->
+      <div id="loadingMsg" style="display:none; text-align:center; padding:12px; background:#e8faf5; border-radius:8px;">
+        <i class="am-icon-spinner am-icon-spin" style="color:#059B7A;font-size:20px;"></i>
+        <div style="font-size:13px; color:#059B7A; margin-top:4px;">AI 分析中…</div>
+        <div style="font-size:10px; color:#999;">首次加载约需 30~60s</div>
+      </div>
+    </div>
+
+    <!-- ========== 右侧 ========== -->
+    <div class="recog-right">
+      <!-- 影像区 -->
+      <div class="img-card" id="imgCard">
+        <div id="imgPlaceholder" style="text-align:center; color:#ccc;">
+          <i class="am-icon-image am-icon-3x"></i>
+          <div style="font-size:12px; margin-top:4px;">上传后显示影像</div>
+        </div>
+        <img id="resultImg" src="" style="display:none;" alt="原始影像">
+      </div>
+
+      <!-- 标注区 -->
+      <div id="annoWrap" style="display:none;">
+        <div class="img-card" style="border:2px solid #2ecc71;">
+          <img id="annoImg" src="" alt="结节标注">
+          <div style="font-size:11px; color:#27ae60; margin-top:4px;"><i class="am-icon-tag"></i> 结节检测标注</div>
+        </div>
+      </div>
+
+      <!-- 结果 -->
+      <div id="resultCard" style="display:none; border-radius:8px; padding:10px 14px; border:1px solid #eee;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div id="resultIcon" style="font-size:24px;">🟢</div>
+          <div>
+            <div id="resultText" style="font-size:15px; font-weight:700;"></div>
+            <div id="modelBadge" style="font-size:11px; color:#999;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI -->
+      <a href="/chat" style="display:block; text-decoration:none;">
+        <div style="background:linear-gradient(135deg,#e8faf5,#f0f8ff); border-radius:8px; padding:10px 12px; border:1px solid #d0e8e0; display:flex; align-items:center; gap:10px; transition:0.2s;"
+             onmouseover="this.style.boxShadow='0 2px 8px rgba(5,155,122,0.1)';"
+             onmouseout="this.style.boxShadow='none';">
+          <span style="font-size:22px;">🤖</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#059B7A; font-size:13px;">AI 医疗助手</div>
+            <div style="font-size:11px; color:#666;">咨询症状 · 了解疾病知识</div>
+          </div>
+          <span style="color:#059B7A;">→</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  var confInput = document.getElementById('conf-threshold-input') || (function(){
+    var el = document.createElement('input'); el.type='hidden'; el.name='conf_threshold'; el.id='conf-threshold-input'; el.value='0.25'; document.body.appendChild(el); return el;
+  })();
+
+  var modelInput = document.getElementById('model-input') || (function(){
+    var el = document.createElement('input'); el.type='hidden'; el.name='model'; el.id='model-input'; document.body.appendChild(el); return el;
+  })();
+
+  // 模型选择
+  function selModel(key) {
+    document.querySelectorAll('.model-opt label').forEach(function(e){ e.classList.remove('sel'); });
+    var el = document.getElementById('mc-'+key);
+    if (el) el.classList.add('sel');
+    modelInput.value = key;
+  }
+  // 默认选第一个可用
+  (function(){
+    var first = document.querySelector('.model-opt label:not(:has(.am-badge))');
+    if (first) {
+      var key = first.id.replace('mc-','');
+      selModel(key);
+    } else {
+      var any = document.querySelector('.model-opt label');
+      if (any) selModel(any.id.replace('mc-',''));
+    }
+  })();
+
+  // 上传
+  var dz = document.getElementById('dropZone');
+  var fi = document.getElementById('fileInp');
+  dz.onclick = function(){ fi.click(); };
+  dz.ondragover = function(e){ e.preventDefault(); this.classList.add('dragover'); };
+  dz.ondragleave = function(){ this.classList.remove('dragover'); };
+  dz.ondrop = function(e){ e.preventDefault(); this.classList.remove('dragover'); if(e.dataTransfer.files.length) fi.files=e.dataTransfer.files; onFile(); };
+  fi.onchange = onFile;
+  function onFile() {
+    var f = fi.files[0];
+    if (!f) return;
+    document.getElementById('fileName').style.display = 'block';
+    document.getElementById('fileName').querySelector('span').textContent = f.name;
+    document.getElementById('confirmBtn').style.display = 'block';
+  }
+
+  // 从 cookie 中读取 CSRF token
+  function getCsrfToken() {
+    var name = 'csrftoken';
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var parts = cookies[i].trim().split('=');
+      if (parts[0] === name) return decodeURIComponent(parts[1]);
+    }
+    return '';
+  }
+
+  function doUpload() {
+    var fd = new FormData(document.getElementById('upform'));
+    fd.set('model', modelInput.value);
+    fd.set('conf_threshold', confInput.value);
+    fd.set('commentator', '{{ user.username }}');
+
+    document.getElementById('loadingMsg').style.display = 'block';
+    document.getElementById('confirmBtn').style.display = 'none';
+    document.getElementById('guideArea').style.display = 'none';
+    document.getElementById('imgPlaceholder').style.display = 'block';
+    document.getElementById('resultImg').style.display = 'none';
+    document.getElementById('imgCard').querySelector('img').style.display = 'none';
+    document.getElementById('annoWrap').style.display = 'none';
+    document.getElementById('resultCard').style.display = 'none';
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload');
+    xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        document.getElementById('loadingMsg').style.display = 'none';
+        if (xhr.status === 200) {
+          var r = JSON.parse(xhr.responseText);
+          var normal = r.result.indexOf('状态正常') !== -1 || r.result.indexOf('nonCOVID') !== -1;
+
+          var ml = '';
+          document.querySelectorAll('.model-opt label').forEach(function(c){
+            if (c.classList.contains('sel')) ml = c.textContent.trim().replace(/（未训练）/g,'').trim();
+          });
+          document.getElementById('modelBadge').innerHTML = '<i class="am-icon-cog"></i> ' + ml;
+          document.getElementById('resultIcon').textContent = normal ? '🟢' : '🔴';
+          document.getElementById('resultText').innerHTML = normal
+            ? '<span style="color:#27ae60;">' + r.result + '</span>'
+            : '<span style="color:#e74c3c;">' + r.result + '</span>';
+          document.getElementById('resultCard').style.display = 'block';
+
+          document.getElementById('resultImg').src = '/' + r.image_url;
+          document.getElementById('resultImg').style.display = 'block';
+          document.getElementById('imgPlaceholder').style.display = 'none';
+
+          if (r.annotated_url) {
+            document.getElementById('annoImg').src = '/' + r.annotated_url;
+            document.getElementById('annoWrap').style.display = 'block';
+          }
+        } else {
+          document.getElementById('resultText').innerHTML = '<span style="color:#e74c3c;">❌ 识别失败</span>';
+          document.getElementById('resultCard').style.display = 'block';
+        }
+      }
+    };
+    xhr.send(fd);
+  }
+</script>
+{% endblock %}

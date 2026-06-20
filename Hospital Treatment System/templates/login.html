@@ -1,0 +1,100 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+  body {
+    background: linear-gradient(180deg, #eef5f2 0%, #f2f8f5 30%, #e8f0eb 70%, #dfe8e3 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .login-card {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    border-radius: 14px;
+    padding: 32px 28px;
+    box-shadow: 0 4px 24px rgba(5,155,122,0.08);
+    margin-top: 60px;
+  }
+  .login-card h1 {
+    text-align: center;
+    color: #059B7A;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  .login-card .am-btn-primary {
+    background: linear-gradient(135deg, #059B7A, #10D07A);
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+  .login-card .am-btn-primary:hover {
+    opacity: 0.9;
+  }
+  .login-card a {
+    color: #059B7A;
+  }
+  .login-card input {
+    border-radius: 8px !important;
+  }
+  .login-card .am-input-group-label {
+    background: #e8faf5;
+    color: #059B7A;
+    border-radius: 8px 0 0 8px !important;
+  }
+</style>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>用户登录</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-siteapp"/>
+  <link rel="icon" type="image/png" href="{% static 'assets/i/favicon.png' %}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="icon" sizes="192x192" href="{% static 'assets/i/app-icon72x72@2x.png' %}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="用户登录"/>
+  <link rel="apple-touch-icon-precomposed" href="{% static 'assets/i/app-icon72x72@2x.png' %}">
+  <meta name="msapplication-TileImage" content="{% static 'assets/i/app-icon72x72@2x.png' %}">
+  <meta name="msapplication-TileColor" content="#0e90d2">
+  <link rel="stylesheet" href="{% static 'assets/css/amazeui.min.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/app.css' %}">
+</head>
+<body>
+
+<div class="am-g">
+  <div class="am-u-lg-3 am-u-md-6 am-u-sm-8 am-u-sm-centered login-card">
+    <h1><i class="am-icon-user-circle"></i> 用户登录</h1>
+    {% if error %}
+    <div class="am-alert am-alert-danger" style="padding:8px 12px; border-radius:6px;">
+      <i class="am-icon-exclamation-triangle"></i> {{ error }}
+    </div>
+    {% endif %}
+    <form method="post" class="am-form">
+        {% csrf_token %}
+      <div class="am-input-group am-radius">
+        <input name="username" type="text" class="am-form-field am-radius" placeholder="用户名" required/>
+        <span class="am-input-group-label log-icon am-radius"><i class="am-icon-user am-icon-sm am-icon-fw"></i></span>
+      </div>
+      <br>
+      <div class="am-input-group am-radius">
+        <input name="password" type="password" class="am-form-field am-radius" placeholder="密码" minlength="6" required>
+        <span class="am-input-group-label log-icon am-radius"><i class="am-icon-lock am-icon-sm am-icon-fw"></i></span>
+      </div>
+      <br>
+      <button type="submit" class="am-btn am-btn-primary am-btn-block am-btn-lg am-radius">登 录</button>
+      <p class="am-text-center" style="margin-top:12px;"><a href="/register">没有账号？立即注册</a></p>
+    </form>
+  </div>
+</div>
+
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/amazeui.min.js' %}"></script>
+</body>
+</html>

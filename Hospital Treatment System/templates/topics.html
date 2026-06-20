@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load time_filters %}
+{% block content_block %}
+
+<!-- content start -->
+<div class="am-g am-g-fixed blog-fixed">
+    <div class="am-u-md-9 am-u-sm-12">
+        {% for item in articles %}
+        <article class="am-g blog-entry-article">
+            <div class="am-u-lg-5 am-u-md-5 am-u-sm-12 blog-entry-img">
+                <img src="/userimg/{{ item.image }}" alt="" class="am-u-sm-12">
+            </div>
+            <div class="am-u-lg-7 am-u-md-7 am-u-sm-12 blog-entry-text">
+                <span class="blog-color">作者: </span>
+                <span>{{ item.author }}&nbsp;</span>
+                <span class="relative-time" data-time="{{ item.publish_date|iso_time }}">{{ item.publish_date }}</span>
+                <h3><a href="/article/{{ item.id }}">{{ item.title }}</a></h3>
+                <p>{{ item.brief }}</p>
+                <p><a href="/article/{{ item.id }}" class="blog-continue">继续阅读 →</a></p>
+            </div>
+        </article>
+        {% empty %}
+        <div class="am-text-center" style="padding: 60px 0;">
+            <i class="am-icon-inbox am-icon-4x" style="color:#ccc;"></i>
+            <p>该话题下暂无文章</p>
+        </div>
+        {% endfor %}
+
+        <ul class="am-pagination">
+            {% if articles.has_previous %}
+            <li class="am-pagination-prev"><a href="?page={{ articles.previous_page_number }}">&laquo; 上一页</a></li>
+            {% endif %}
+            {% if articles.has_next %}
+            <li class="am-pagination-next"><a href="?page={{ articles.next_page_number }}">下一页 &raquo;</a></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="am-u-md-3 am-u-sm-12 blog-sidebar">
+        <div class="blog-sidebar-widget blog-bor">
+            <h2 class="blog-title"><span>话题列表</span></h2>
+            <ul class="am-list">
+                {% for t in topics %}
+                <li><a href="/topic/{{ t.id }}">{{ t.tname }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

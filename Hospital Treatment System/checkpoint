@@ -1,0 +1,2 @@
+model_checkpoint_path: "lung_restnet.ckpt"
+all_model_checkpoint_paths: "lung_restnet.ckpt"

@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load time_filters %}
+{% block content_block %}
+
+<!-- ========== 数据看板 ========== -->
+{% if stats.total > 0 %}
+<div style="margin-bottom: 22px;">
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+    <div style="flex:1; min-width:130px; background:linear-gradient(135deg,#059B7A,#10D07A); border-radius:10px; padding:16px; text-align:center;">
+      <div style="color:rgba(255,255,255,0.7); font-size:12px;">总识别</div>
+      <div style="color:#fff; font-size:32px; font-weight:700;">{{ stats.total }}</div>
+    </div>
+    <div style="flex:1; min-width:130px; background:linear-gradient(135deg,#e74c3c,#c0392b); border-radius:10px; padding:16px; text-align:center;">
+      <div style="color:rgba(255,255,255,0.7); font-size:12px;">疑似肺炎</div>
+      <div style="color:#fff; font-size:32px; font-weight:700;">{{ stats.covid }}</div>
+    </div>
+    <div style="flex:1; min-width:130px; background:linear-gradient(135deg,#27ae60,#2ecc71); border-radius:10px; padding:16px; text-align:center;">
+      <div style="color:rgba(255,255,255,0.7); font-size:12px;">状态正常</div>
+      <div style="color:#fff; font-size:32px; font-weight:700;">{{ stats.normal }}</div>
+    </div>
+    <div style="flex:1; min-width:130px; background:linear-gradient(135deg,#2c3e50,#34495e); border-radius:10px; padding:16px; text-align:center;">
+      <div style="color:rgba(255,255,255,0.7); font-size:12px;">今日识别</div>
+      <div style="color:#fff; font-size:32px; font-weight:700;">{{ stats.today }}</div>
+    </div>
+  </div>
+
+  <!-- 图表行 -->
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <div class="blog-sidebar-widget" style="flex:1; min-width:200px; padding:14px;">
+      <h2 class="blog-title" style="margin-bottom:8px;"><span><i class="am-icon-pie-chart"></i> 识别分布</span></h2>
+      <div style="height:180px; overflow:hidden;"><canvas id="pieChart"></canvas></div>
+    </div>
+    <div class="blog-sidebar-widget" style="flex:2; min-width:280px; padding:14px;">
+      <h2 class="blog-title" style="margin-bottom:8px;"><span><i class="am-icon-line-chart"></i> 近7天识别趋势</span></h2>
+      <div style="height:180px; overflow:hidden;"><canvas id="barChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 最近记录 -->
+  <div class="blog-sidebar-widget" style="padding:14px;">
+    <h2 class="blog-title" style="margin-bottom:8px;"><span><i class="am-icon-list"></i> 最近识别记录</span></h2>
+    <div style="overflow-x:auto;">
+      <div style="font-size:13px;">
+        <div style="display:flex; border-bottom:2px solid #e0e0e0; padding:8px 6px; font-weight:700; color:#555;">
+          <div style="width:18%;">用户</div>
+          <div style="width:42%;">诊断结果</div>
+          <div style="width:40%;">时间</div>
+        </div>
+        {% for r in recent_records %}
+        <div style="display:flex; border-bottom:1px solid #f0f0f0; padding:8px 6px;">
+          <div style="width:18%;">{{ r.user_id }}</div>
+          <div style="width:42%;">
+            {% if '疑似肺炎' in r.result %}
+            <span style="color:#e74c3c; font-weight:600;">⚠ 疑似肺炎</span>
+            {% else %}
+            <span style="color:#27ae60; font-weight:600;">✅ 状态正常</span>
+            {% endif %}
+          </div>
+          <div style="width:40%;" class="relative-time" data-time="{{ r.recognition_date|date:'c' }}">{{ r.recognition_date }}</div>
+        </div>
+        {% empty %}
+        <div style="padding:12px; color:#ccc; text-align:center;">暂无记录</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ========== 文章列表 + 侧边栏 ========== -->
+<div class="am-g am-g-fixed blog-fixed">
+    <div class="am-u-md-8 am-u-sm-12">
+        {% for item in articles %}
+        <article class="blog-entry-article">
+            <div class="blog-entry-img">
+                <img src="/userimg/{{ item.image }}" alt="{{ item.title }}" onerror="this.src='{% static 'images/medical_placeholder.svg' %}'">
+            </div>
+            <div class="blog-entry-text">
+                <div class="meta">
+                    <span><i class="am-icon-user"></i> {{ item.author }}</span>
+                    <span><i class="am-icon-clock-o"></i> <span class="relative-time" data-time="{{ item.publish_date|iso_time }}">{{ item.publish_date }}</span></span>
+                    <span><i class="am-icon-comment-o"></i> {{ item.comment_set.count }} 评论</span>
+                </div>
+                <h3><a href="/article/{{ item.id }}">{{ item.title }}</a></h3>
+                <p>{{ item.brief }}</p>
+                <a href="/article/{{ item.id }}" class="blog-continue">阅读全文 <i class="am-icon-arrow-right"></i></a>
+            </div>
+        </article>
+    {% empty %}
+        <div class="am-text-center" style="padding: 80px 0;">
+            <i class="am-icon-file-text am-icon-5x" style="color:#ccc;"></i>
+            <h3 style="color: #999;">暂无文章</h3>
+            <p style="color: #bbb;">登录后即可发布文章</p>
+        </div>
+    {% endfor %}
+
+        <ul class="am-pagination">
+            {% if articles.has_previous %}
+            <li class="am-pagination-prev"><a href="?page={{ articles.previous_page_number }}"><i class="am-icon-angle-left"></i> 上一页</a></li>
+            {% endif %}
+            {% if articles.has_next %}
+            <li class="am-pagination-next"><a href="?page={{ articles.next_page_number }}">下一页 <i class="am-icon-angle-right"></i></a></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="am-u-md-4 am-u-sm-12 blog-sidebar">
+        <div class="blog-sidebar-widget">
+            <h2 class="blog-title"><span><i class="am-icon-hospital-o"></i> 系统简介</span></h2>
+            <div style="text-align: center; margin-bottom: 12px;">
+                <img src="{% static 'images/about.gif' %}" style="max-width: 100%; border-radius: 8px;" alt="about">
+            </div>
+            <p style="font-size: 13px; color: #666; line-height: 1.7;">
+                本系统提供基于深度学习的肺部CT影像智能识别与肺结节检测分析。
+            </p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+                <span class="am-badge am-badge-success am-radius">肺炎识别</span>
+                <span class="am-badge am-badge-warning am-radius">结节检测</span>
+                <span class="am-badge am-badge-secondary am-radius">AI 问诊</span>
+            </div>
+        </div>
+
+
+
+        <div class="blog-sidebar-widget">
+            <h2 class="blog-title"><span><i class="am-icon-tags"></i> 话题分类</span></h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                {% for t in topics %}
+                <a href="/topic/{{ t.id }}" class="am-badge am-badge-primary" style="padding: 6px 14px; border-radius: 20px; font-size: 13px; background: #e8faf5; color: #059B7A;">
+                    {{ t.tname }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="blog-sidebar-widget">
+            <h2 class="blog-title"><span><i class="am-icon-phone"></i> 联系我们</span></h2>
+            <div class="social-icon" style="display: flex; justify-content: center; gap: 20px; padding: 8px 0;">
+                <a href="https://im.qq.com" target="_blank" rel="noopener" style="font-size: 28px; color: #059B7A;"><i class="am-icon-qq"></i></a>
+                <a href="https://github.com" target="_blank" rel="noopener" style="font-size: 28px; color: #059B7A;"><i class="am-icon-github"></i></a>
+                <a href="https://weibo.com" target="_blank" rel="noopener" style="font-size: 28px; color: #059B7A;"><i class="am-icon-weibo"></i></a>
+                <a href="https://www.wechat.com" target="_blank" rel="noopener" style="font-size: 28px; color: #059B7A;"><i class="am-icon-weixin"></i></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  {% if stats.total > 0 %}
+  // 饼图
+  new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['疑似肺炎', '状态正常'],
+      datasets: [{
+        data: [{{ stats.covid }}, {{ stats.normal }}],
+        backgroundColor: ['#e74c3c', '#27ae60'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 0,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } }
+      }
+    }
+  });
+
+  // 柱状图
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: [{% for d in daily_labels %}'{{ d }}',{% endfor %}],
+      datasets: [{
+        label: '识别次数',
+        data: [{{ daily_counts|join:',' }}],
+        backgroundColor: '#059B7A',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 0,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: {{ y_max }},
+          ticks: { stepSize: 10, font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.04)' }
+        },
+        x: {
+          ticks: { font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+  {% endif %}
+
+  // 相对时间
+  document.querySelectorAll('.relative-time').forEach(function(el) {
+    var t = el.getAttribute('data-time');
+    if (!t) return;
+    var d = new Date(t);
+    if (isNaN(d.getTime())) return;
+    var now = new Date();
+    var s = Math.floor((now - d) / 1000);
+    var text = '';
+    if (s < 60) text = '刚刚';
+    else if (s < 3600) text = Math.floor(s/60) + '分钟前';
+    else if (s < 86400) text = Math.floor(s/3600) + '小时前';
+    else if (s < 2592000) text = Math.floor(s/86400) + '天前';
+    else text = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    el.textContent = text;
+  });
+});
+</script>
+{% endblock %}

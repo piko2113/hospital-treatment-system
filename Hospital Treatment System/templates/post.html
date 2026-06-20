@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content_block %}
+
+<div class="am-g">
+    <div class="am-u-md-12 am-u-sm-12">
+        <article class="blog-entry-article">
+            <h2 style="color: #0e90d2;"><i class="am-icon-edit"></i> 发布文章</h2>
+            <hr>
+            <form method="post" enctype="multipart/form-data" class="am-form am-form-horizontal">
+                {% csrf_token %}
+                <div class="am-form-group">
+                    <label for="title" class="am-u-sm-2 am-form-label">标题</label>
+                    <div class="am-u-sm-10">
+                        <input name="title" type="text" id="title" class="am-form-field" placeholder="请输入文章标题" required/>
+                    </div>
+                </div>
+                <div class="am-form-group">
+                    <label for="brief" class="am-u-sm-2 am-form-label">简介</label>
+                    <div class="am-u-sm-10">
+                        <input name="brief" type="text" id="brief" placeholder="请输入文章简介" required/>
+                    </div>
+                </div>
+                <div class="am-form-group">
+                    <label class="am-u-sm-2 am-form-label">话题</label>
+                    <div class="am-u-sm-10">
+                        <select name="topic_id">
+                            {% for i in topic %}
+                            <option value="{{ i.id }}">{{ i.tname }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="am-form-group">
+                    <label class="am-u-sm-2 am-form-label">封面图</label>
+                    <div class="am-u-sm-10">
+                        <input name="up_image" type="file">
+                        <small>支持 JPG/PNG 格式</small>
+                    </div>
+                </div>
+                <div class="am-form-group">
+                    <label class="am-u-sm-2 am-form-label">文章内容</label>
+                    <div class="am-u-sm-10">
+                        <textarea name="content" rows="15" placeholder="请输入文章内容"></textarea>
+                    </div>
+                </div>
+                <div class="am-form-group">
+                    <div class="am-u-sm-10 am-u-sm-offset-2">
+                        <button type="submit" class="am-btn am-btn-primary am-btn-lg am-radius">
+                            <i class="am-icon-check"></i> 提交发布
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </article>
+    </div>
+</div>
+{% endblock %}

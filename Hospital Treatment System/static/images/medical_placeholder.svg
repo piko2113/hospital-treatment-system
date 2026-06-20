@@ -1,0 +1,37 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='520' height='340' viewBox='0 0 520 340'>
+  <defs>
+    <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#059B7A'/>
+      <stop offset='50%' stop-color='#10D07A'/>
+      <stop offset='100%' stop-color='#48c9b0'/>
+    </linearGradient>
+    <linearGradient id='overlay' x1='0%' y1='100%' x2='0%' y2='0%'>
+      <stop offset='0%' stop-color='rgba(0,0,0,0.15)'/>
+      <stop offset='100%' stop-color='rgba(0,0,0,0)'/>
+    </linearGradient>
+  </defs>
+  <rect width='520' height='340' fill='url(#bg)' rx='8'/>
+  <rect width='520' height='340' fill='url(#overlay)' rx='8'/>
+  
+  <!-- Lungs outline -->
+  <g transform='translate(260,155)' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2.5'>
+    <!-- Left lung -->
+    <path d='M-5,-70 C-40,-75 -75,-50 -80,-20 C-85,10 -75,30 -60,40 C-45,50 -35,45 -30,55 C-25,65 -20,80 -10,75 C0,70 5,55 5,40 Z'/>
+    <!-- Right lung -->
+    <path d='M5,-70 C40,-75 75,-50 80,-20 C85,10 75,30 60,40 C45,50 35,45 30,55 C25,65 20,80 10,75 C0,70 -5,55 -5,40 Z'/>
+    <!-- Trachea -->
+    <path d='M0,-70 L0,-95'/>
+  </g>
+
+  <!-- Medical cross icon -->
+  <g transform='translate(260,200)' fill='rgba(255,255,255,0.3)'>
+    <rect x='-18' y='-5' width='36' height='10' rx='3'/>
+    <rect x='-5' y='-18' width='10' height='36' rx='3'/>
+  </g>
+
+  <!-- Decorative dots -->
+  <circle cx='80' cy='260' r='3' fill='rgba(255,255,255,0.15)'/>
+  <circle cx='440' cy='260' r='3' fill='rgba(255,255,255,0.15)'/>
+  <circle cx='120' cy='290' r='2' fill='rgba(255,255,255,0.1)'/>
+  <circle cx='400' cy='290' r='2' fill='rgba(255,255,255,0.1)'/>
+</svg>

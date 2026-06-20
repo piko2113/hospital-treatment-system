@@ -1,0 +1,91 @@
+
+{% extends 'base.html' %}
+{% load static %}
+{% load time_filters %}
+{% block content_block %}
+<!-- content start -->
+<div class="am-g am-g-fixed blog-fixed blog-content">
+    <div class="am-u-md-9 am-u-sm-12">
+      <article class="am-article blog-article-p">
+        <div class="am-article-hd">
+          <h1 class="am-article-title blog-text-center">{{ article.title }}</h1>
+          <p class="am-article-meta blog-text-center">
+              <span><a href="/topic/{{ article.topic_id }}" class="blog-color">{{ article.topic }} &nbsp;</a></span>-
+              <span>{{ article.author }} &nbsp;</span>-
+              <span class="relative-time" data-time="{{ article.publish_date|iso_time }}">{{ article.publish_date }}</span>
+          </p>
+        </div>
+        <div class="am-article-bd">
+          <img src="/userimg/upload/62284a8e785471646807694554.png" alt="" class="blog-entry-img blog-article-margin" style="max-width:100%;">
+          <div class="am-margin-vertical">
+            {{ article.content|safe }}
+          </div>
+        </div>
+      </article>
+
+      <hr>
+      <h3 class="blog-comment">评论 ({{ article.comment_set.count }})</h3>
+      {% for c in article.comment_set.all %}
+        <div class="am-g blog-author blog-article-margin">
+          <div class="am-u-sm-3 am-u-md-2 am-u-lg-1">
+            <img src="{% static 'assets/i/f15.jpg' %}" alt="" class="blog-author-img am-circle" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+          </div>
+          <div class="am-u-sm-9 am-u-md-10 am-u-lg-11">
+            <p><span class="blog-color">{{ c.commentator.nickname }}</span> &nbsp;<small class="relative-time" data-time="{{ c.comment_date|iso_time }}">{{ c.comment_date }}</small></p>
+            <p>{{ c.content }}</p>
+          </div>
+        </div>
+      {% empty %}
+        <p class="am-text-center">暂无评论，快来发表第一条评论吧！</p>
+      {% endfor %}
+      <hr>
+
+      <ul class="am-pagination blog-article-margin">
+        <li class="am-pagination-prev"><a href="/article/{{ pres.id }}" class="">&laquo; 上一篇</a></li>
+        <li class="am-pagination-next"><a href="/article/{{ nexts.id }}">下一篇 &raquo;</a></li>
+      </ul>
+
+      <hr>
+      <form method="post" action="/comment/{{ article.id }}/" class="am-form am-g">
+          {% csrf_token %}
+          <h3 class="blog-comment">发表评论</h3>
+          <fieldset>
+              <input type="hidden" name="commentator" value="{{ user.username }}">
+            <div class="am-form-group">
+              <textarea name="content" class="" rows="4" placeholder="回复内容"></textarea>
+            </div>
+            <p>
+              {% if user.is_authenticated %}
+              <button type="submit" class="am-btn am-btn-primary">发表评论</button>
+              {% else %}
+              <a href="/login" class="am-btn am-btn-secondary">登录后发表评论</a>
+              {% endif %}
+            </p>
+          </fieldset>
+      </form>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="am-u-md-3 am-u-sm-12 blog-sidebar">
+        <div class="blog-sidebar-widget blog-bor">
+            <h2 class="blog-title"><span>文章信息</span></h2>
+            <ul class="am-list">
+                <li><strong>作者：</strong>{{ article.author }}</li>
+                <li><strong>发布时间：</strong>{{ article.publish_date }}</li>
+                <li><strong>话题：</strong><a href="/topic/{{ article.topic_id }}">{{ article.topic }}</a></li>
+            </ul>
+        </div>
+        <div class="blog-sidebar-widget blog-bor">
+            <h2 class="blog-title"><span>热门文章</span></h2>
+            <ul class="am-list">
+                {% for a in article.topic.article_set.all %}
+                {% if forloop.counter <= 5 %}
+                <li><a href="/article/{{ a.id }}">{{ a.title }}</a></li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+<!-- content end -->
+{% endblock %}
