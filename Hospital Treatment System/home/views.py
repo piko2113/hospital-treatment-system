@@ -372,15 +372,13 @@ def upload(request):
             yolo_dir = _os.path.join(base_dir, 'yolo_detection')
             if _os.path.exists(yolo_dir):
                 sys.path.insert(0, base_dir)
-                sys.path.insert(0, yolo_dir)
-                import fix_nms
-                from detect import LungNoduleDetector
+                import yolo_detection.detect as yolo_detect
                 model_path = _os.path.join(yolo_dir, 'runs', 'yolov8n_nodule', 'weights', 'best.pt')
                 if _os.path.exists(model_path):
                     timestamp = str(int(time.time()))
                     upload_dir = _os.path.join(base_dir, 'userimg', 'upload', 'recognition')
 
-                    detector = LungNoduleDetector(model_path)
+                    detector = yolo_detect.LungNoduleDetector(model_path)
                     nodules = detector.detect_nodules(image_abs_path, conf=conf_threshold, iou=0.45)
                     if nodules:
                         annotated_filename = timestamp + '_annotated.png'
