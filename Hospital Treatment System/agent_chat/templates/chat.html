@@ -244,6 +244,10 @@
                 🤖 AI 医疗助手
                 <small>— 症状咨询 · CT识别 · 医学知识</small>
                 <button class="history-btn" onclick="openHistory()">📋 提问记录</button>
+                <label class="mode-switch" style="margin-left:10px;font-size:12px;color:rgba(255,255,255,0.9);cursor:pointer;user-select:none;">
+                    <input type="checkbox" id="mode-toggle" onchange="toggleMode()" style="vertical-align:middle;">
+                    <span id="mode-label" style="vertical-align:middle;">多模态分析</span>
+                </label>
             </div>
 
             <div class="chat-messages" id="chat-messages">
@@ -251,12 +255,13 @@
                     <div class="avatar">🤖</div>
                     <div class="bubble">
                         你好！我是AI医疗助手，有什么可以帮你的？<br><br>
-                        你可以问我：
-                        <br>🔹 "发烧咳嗽挂什么科？"
-                        <br>🔹 "什么是肺炎？有什么症状？"
-                        <br>🔹 上传CT影像让我识别
-                        <br>🔹 "论坛里关于XX有什么讨论？"
-                        <br><br>
+                        📝 文字问诊模式：<br>
+                        🔹 "发烧咳嗽挂什么科？"<br>
+                        🔹 "什么是肺炎？有什么症状？"<br>
+                        🔹 "论坛里关于XX有什么讨论？"<br><br>
+                        🧠 多模态分析模式（勾选上方开关）：<br>
+                        🔹 上传CT影像 → 视觉识别 + 知识库 + 综合报告<br>
+                        🔹 一次分析，一站式出结果<br><br>
 
                     </div>
                 </div>
@@ -294,6 +299,20 @@
         }
     });
 
+    // 多模态模式切换
+    function toggleMode() {
+        const modeToggle = document.getElementById('mode-toggle');
+        const modeLabel = document.getElementById('mode-label');
+        const uploadBtn = document.getElementById('btn-upload');
+        if (modeToggle.checked) {
+            modeLabel.textContent = '✅ 多模态分析';
+            uploadBtn.title = '上传CT影像进行多模态分析';
+        } else {
+            modeLabel.textContent = '多模态分析';
+            uploadBtn.title = '上传CT图片';
+        }
+    }
+
     // 上传按钮
     uploadBtn.addEventListener('click', function() {
         fileInput.click();
@@ -301,7 +320,12 @@
 
     fileInput.addEventListener('change', function() {
         if (this.files && this.files[0]) {
-            uploadImage(this.files[0]);
+            const isMultimodal = document.getElementById('mode-toggle').checked;
+            if (isMultimodal) {
+                uploadMultimodal(this.files[0]);
+            } else {
+                uploadImage(this.files[0]);
+            }
         }
     });
 
@@ -450,6 +474,93 @@
         } catch (err) {
             hideTyping();
             addMessage('assistant', '❌ 上传失败，请稍后重试');
+        }
+
+        isProcessing = false;
+        fileInput.value = '';
+    }
+
+    // ── 多模态分析上传 ─────────────────────────
+    async function uploadMultimodal(file) {
+        if (isProcessing) return;
+        isProcessing = true;
+
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('model', 'resnet50');
+
+        addMessage('user', '🧠 上传CT影像，进行多模态分析...');
+        showTyping();
+
+        try {
+            const resp = await fetch('/chat/api/multimodal/', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await resp.json();
+            hideTyping();
+
+            if (data.success) {
+                let report = '';
+
+                // 图片预览
+                if (data.image_url) {
+                    report += '📷 影像分析报告\n\n';
+                }
+
+                // ===== 视觉分析摘要 =====
+                const vis = data.visual || {};
+                const cls = vis.classification || {};
+                const det = vis.nodule_detection || {};
+
+                if (cls.result) {
+                    const emoji = cls.result === '异常' ? '🔴' : '🟢';
+                    report += emoji + ' 【肺炎诊断】\n';
+                    report += '  结果：' + cls.result + '\n';
+                    report += '  置信度：' + (cls.confidence * 100).toFixed(2) + '%\n';
+                    report += '  模型：' + (cls.model || '未知') + '\n\n';
+                }
+
+                if (det.success !== undefined) {
+                    report += '🔍 【肺结节检测】\n';
+                    if (det.success && det.count > 0) {
+                        report += '  检出 ' + det.count + ' 个结节：\n';
+                        for (let i = 0; i < Math.min(det.nodules.length, 5); i++) {
+                            const n = det.nodules[i];
+                            const box = n.bbox;
+                            const size = Math.max(box[2] - box[0], box[3] - box[1]);
+                            report += '    ' + (i+1) + '. 位置(' + box[0] + ',' + box[1] + ')-(' + box[2] + ',' + box[3] + ')';
+                            report += '，大小约' + size + 'px，置信度' + (n.confidence * 100).toFixed(1) + '%\n';
+                        }
+                    } else if (det.success) {
+                        report += '  未检测到明显结节。\n';
+                    } else {
+                        report += '  检测不可用：' + (det.error || '未知错误') + '\n';
+                    }
+                    report += '\n';
+                }
+
+                // ===== RAG 查询 =====
+                if (data.rag_query) {
+                    report += '📎 【检索关键词】\n  ' + data.rag_query + '\n\n';
+                }
+
+                if (data.kb_results_count !== undefined) {
+                    report += '📚 【知识库匹配】\n  命中 ' + data.kb_results_count + ' 条相关疾病信息\n\n';
+                }
+
+                // ===== 综合报告 =====
+                if (data.report) {
+                    report += '---\n\n' + data.report;
+                }
+
+                addMessage('assistant', report);
+            } else {
+                addMessage('assistant', '❌ 多模态分析失败：' + (data.error || '未知错误'));
+            }
+        } catch (err) {
+            hideTyping();
+            addMessage('assistant', '❌ 请求失败，请稍后重试');
         }
 
         isProcessing = false;

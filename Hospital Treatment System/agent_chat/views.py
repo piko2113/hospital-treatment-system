@@ -13,6 +13,7 @@ from .models import ChatHistory
 from .agent import chat, reset_conversation, detect_user_intent
 from .rag_engine import build_kb
 from .tools import get_tool_descriptions, ct_recognize, ct_detect_nodules
+from .multimodal_agent import multimodal_analyze
 
 
 def chat_page(request):
@@ -104,6 +105,38 @@ def api_ct_image(request):
         result['nodule_detection'] = nodule_result
 
         return JsonResponse(result)
+
+    return JsonResponse({'error': '仅支持 POST'}, status=405)
+
+
+@csrf_exempt
+def api_multimodal(request):
+    """
+    多模态分析 API：上传CT影像 → 视觉识别 + RAG检索 + 报告生成，一站式返回。
+    """
+    if request.method == 'POST':
+        image = request.FILES.get('image')
+        if not image:
+            return JsonResponse({'error': '请上传图片'}, status=400)
+
+        model_name = request.POST.get('model', 'resnet50')
+        user_query = request.POST.get('query', '').strip()
+        conf_threshold = float(request.POST.get('conf_threshold', '0.25'))
+
+        from home.views import handle_uploaded_file
+        image_url, image_abs_path = handle_uploaded_file(image)
+
+        try:
+            result = multimodal_analyze(
+                image_path=image_abs_path,
+                user_query=user_query,
+                model_name=model_name,
+                conf_threshold=conf_threshold,
+            )
+            result['image_url'] = image_url
+            return JsonResponse(result)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
     return JsonResponse({'error': '仅支持 POST'}, status=405)
 

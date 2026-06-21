@@ -5,7 +5,7 @@ YOLOv8 肺结节检测推理脚本
 
 import os, sys
 sys.path.insert(0, os.path.dirname(__file__))
-import fix_nms
+# fix_nms 模块已弃用，YOLOv8 内置 NMS 处理
 
 from PIL import Image
 import numpy as np

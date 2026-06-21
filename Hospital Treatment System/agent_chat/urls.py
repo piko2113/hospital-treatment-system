@@ -7,4 +7,5 @@ urlpatterns = [
     path('api/ct/', views.api_ct_image, name='api_ct_image'),
     path('api/kb-status/', views.check_kb, name='check_kb'),
     path('api/history/', views.api_history, name='api_history'),
+    path('api/multimodal/', views.api_multimodal, name='api_multimodal'),
 ]
